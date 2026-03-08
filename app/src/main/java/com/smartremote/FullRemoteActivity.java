@@ -71,8 +71,8 @@ public class FullRemoteActivity extends AppCompatActivity {
             return true;
         });
 
-        btnLeftClick.setOnClickListener(v -> Toast.makeText(this, "Left Click Sent", Toast.LENGTH_SHORT).show());
-        btnRightClick.setOnClickListener(v -> Toast.makeText(this, "Right Click Sent", Toast.LENGTH_SHORT).show());
+        btnLeftClick.setOnClickListener(v -> mouse.clickLeft());
+        btnRightClick.setOnClickListener(v -> mouse.clickRight());
         btnBluetooth.setOnClickListener(v -> Toast.makeText(this, "Bluetooth Connection Menu", Toast.LENGTH_SHORT).show());
 
         btnKeyboard.setOnClickListener(v -> openKeyboard());
@@ -126,13 +126,13 @@ public class FullRemoteActivity extends AppCompatActivity {
     private class GestureListener extends GestureDetector.SimpleOnGestureListener {
         @Override
         public boolean onSingleTapConfirmed(MotionEvent e) {
-            Toast.makeText(FullRemoteActivity.this, "Tap Left Click", Toast.LENGTH_SHORT).show();
+            mouse.clickLeft();
             return true;
         }
 
         @Override
         public boolean onDoubleTap(MotionEvent e) {
-            Toast.makeText(FullRemoteActivity.this, "Tap Right Click", Toast.LENGTH_SHORT).show();
+            mouse.clickRight();
             return true;
         }
     }

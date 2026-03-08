@@ -68,8 +68,17 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this, "Please enable Bluetooth", Toast.LENGTH_SHORT).show();
             return;
         }
-        statusText.setText("Status: Bluetooth Initialized\n(Ready to host HID)");
-        Toast.makeText(this, "HID Server Ready! Pair from PC to your phone.", Toast.LENGTH_LONG).show();
+        
+        // Initialize the background HID Service Profile
+        com.smartremote.bluetooth.HidController.getInstance(this).initialize();
+
+        statusText.setText("Status: Bluetooth Initialized\n(Wait 2s, then pair)");
+        Toast.makeText(this, "Make phone discoverable and pair from PC/Tablet", Toast.LENGTH_LONG).show();
+        
+        // Request Android to make this phone discoverable so the PC can see it
+        Intent discoverableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
+        discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300);
+        startActivity(discoverableIntent);
     }
 
     @Override

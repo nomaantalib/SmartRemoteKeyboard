@@ -57,15 +57,13 @@ public class TouchpadActivity extends AppCompatActivity {
     private class GestureListener extends GestureDetector.SimpleOnGestureListener {
         @Override
         public boolean onSingleTapConfirmed(MotionEvent e) {
-            Toast.makeText(TouchpadActivity.this, "Left Click", Toast.LENGTH_SHORT).show();
-            // mouse.sendLeftClick();
+            mouse.clickLeft();
             return true;
         }
 
         @Override
         public boolean onDoubleTap(MotionEvent e) {
-            Toast.makeText(TouchpadActivity.this, "Right Click / Drag", Toast.LENGTH_SHORT).show();
-            // mouse.sendRightClick();
+            mouse.clickRight();
             return true;
         }
     }
