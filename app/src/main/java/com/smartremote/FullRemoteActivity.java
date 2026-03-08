@@ -109,7 +109,7 @@ public class FullRemoteActivity extends AppCompatActivity {
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 if (s.length() > 0) {
-                    String lastChar = s.substring(s.length() - 1).toUpperCase();
+                    String lastChar = s.toString().substring(s.length() - 1).toUpperCase();
                     keyboard.sendKey(lastChar);
                     
                     hiddenEditText.removeTextChangedListener(this);
