@@ -36,7 +36,7 @@
             android:id="@+id/btnBluetooth"
             android:layout_width="32dp"
             android:layout_height="32dp"
-            android:src="@android:drawable/stat_sys_data_bluetooth"
+            android:src="@android:drawable/ic_menu_share"
             android:clickable="true"
             android:focusable="true"
             app:tint="@color/textSecondary"/>
