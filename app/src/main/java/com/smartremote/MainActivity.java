@@ -31,12 +31,14 @@ public class MainActivity extends AppCompatActivity {
         MaterialCardView cardTouchpad = findViewById(R.id.cardTouchpad);
         MaterialCardView cardFullRemote = findViewById(R.id.cardFullRemote);
         Button btnConnect = findViewById(R.id.btnConnect);
+        Button btnHelp = findViewById(R.id.btnHelp);
 
         cardKeyboard.setOnClickListener(v -> startActivity(new Intent(this, KeyboardActivity.class)));
         cardTouchpad.setOnClickListener(v -> startActivity(new Intent(this, TouchpadActivity.class)));
         cardFullRemote.setOnClickListener(v -> startActivity(new Intent(this, FullRemoteActivity.class)));
         
         btnConnect.setOnClickListener(v -> checkPermissionsAndInitBluetooth());
+        btnHelp.setOnClickListener(v -> startActivity(new Intent(this, TutorialActivity.class)));
     }
 
     private void checkPermissionsAndInitBluetooth() {

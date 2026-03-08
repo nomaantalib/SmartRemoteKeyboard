@@ -22,6 +22,7 @@
         <activity android:name=".TouchpadActivity" android:exported="true"/>
         <activity android:name=".KeyboardActivity" android:exported="true"/>
         <activity android:name=".FullRemoteActivity" android:exported="true"/>
+        <activity android:name=".TutorialActivity" android:exported="true"/>
 
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
