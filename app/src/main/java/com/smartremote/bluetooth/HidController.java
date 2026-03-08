@@ -77,6 +77,13 @@ public class HidController implements BluetoothProfile.ServiceListener {
                 public void onAppStatusChanged(BluetoothDevice pluggedDevice, boolean registered) {
                     isAppRegistered = registered;
                     Log.i("HID", "App Registered: " + registered);
+                    if (registered) {
+                        // Attempt to connect to any already bonded device that supports HID
+                        BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+                        for (BluetoothDevice device : adapter.getBondedDevices()) {
+                            hidDevice.connect(device);
+                        }
+                    }
                 }
 
                 @Override

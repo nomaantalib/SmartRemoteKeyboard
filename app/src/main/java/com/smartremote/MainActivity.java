@@ -74,10 +74,10 @@ public class MainActivity extends AppCompatActivity {
         // Initialize the background HID Service Profile
         com.smartremote.bluetooth.HidController.getInstance(this).initialize();
 
-        statusText.setText("Status: Bluetooth Initialized\n(Wait 2s, then pair)");
-        Toast.makeText(this, "Make phone discoverable and pair from PC/Tablet", Toast.LENGTH_LONG).show();
+        statusText.setText("Status: HID Server Started\nCRITICAL: If connection fails, 'Unpair' your phone on Windows and try again.");
+        Toast.makeText(this, "IMPORTANT: Pair from your PC, not the phone!", Toast.LENGTH_LONG).show();
         
-        // Request Android to make this phone discoverable so the PC can see it
+        // Request Android to make this phone discoverable
         Intent discoverableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
         discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300);
         startActivity(discoverableIntent);
