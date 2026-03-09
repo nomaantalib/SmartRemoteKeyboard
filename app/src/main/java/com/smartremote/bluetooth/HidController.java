@@ -99,8 +99,15 @@ public class HidController implements BluetoothProfile.ServiceListener {
         public void onGetReport(BluetoothDevice device, byte type, byte id, int bufferSize) {
             Log.i("HID", "Host asked for GET_REPORT type:" + type + " id:" + id);
             if (hidDevice != null) {
-                // Reply with UNSUPPORTED instead of dummy bytes, otherwise Windows marks the device as malfunctioning
-                hidDevice.reportError(device, BluetoothHidDevice.ERROR_RSP_UNSUPPORTED_REQ);
+                // Windows *must* receive a SUCCESS with valid-length dummy data upon connection. 
+                // If we send UNSUPPORTED, Windows assumes the driver is broken and disconnects.
+                if (id == 1) {
+                    hidDevice.replyReport(device, type, id, new byte[8]); // Keyboard dummy
+                } else if (id == 2) {
+                    hidDevice.replyReport(device, type, id, new byte[4]); // Mouse dummy
+                } else {
+                    hidDevice.replyReport(device, type, id, new byte[bufferSize]);
+                }
             }
         }
 
@@ -118,22 +125,20 @@ public class HidController implements BluetoothProfile.ServiceListener {
     private void registerApp() {
         if (hidDevice != null && !isAppRegistered) {
             
-            // Subclass 0x40 specifically means "Keyboard" (0x80 is Mouse, 0xC0 is Combo).
-            // Many Windows hosts reject combos if the SDP name doesn't match the descriptor.
             BluetoothHidDeviceAppSdpSettings sdp = new BluetoothHidDeviceAppSdpSettings(
-                    "Smart Remote System", // Less generic, prevents Windows caching conflicts
+                    "Smart Keyboard Pro", 
                     "Bluetooth HID Input Device",
-                    "Android HID",
-                    (byte) 0x40, // KEYBOARD subclass to satisfy strict host rules
+                    "Generic", // Do not use "Android", Windows sometimes rejects it
+                    (byte) 0x40, // KEYBOARD subclass 
                     HidDescriptor.KEYBOARD_MOUSE_REPORT_MAP
             );
             
             try {
                 hidDevice.unregisterApp();
-                Log.d("HID", "Unregistering old app state before new registration.");
             } catch (Exception ignored) {}
 
-            boolean success = hidDevice.registerApp(sdp, null, null, Executors.newSingleThreadExecutor(), callback);
+            // Executors.newCachedThreadPool() is sometimes better than SingleThread for HID IO
+            boolean success = hidDevice.registerApp(sdp, null, null, Executors.newCachedThreadPool(), callback);
             Log.d("HID", "Register status (0x40 Keyboard): " + success);
         }
     }
