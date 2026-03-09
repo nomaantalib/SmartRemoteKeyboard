@@ -32,10 +32,15 @@ public class TouchpadActivity extends AppCompatActivity {
             
             if (event.getPointerCount() == 2) {
                 isScrolling = true;
-                // Basic scroll logic for ultra demo
                 if (action == MotionEvent.ACTION_MOVE) {
                     float dy = event.getY() - lastY;
-                    mouse.moveCursor(0, dy * 0.5f); // simulate scroll Wheel
+                    // Apply scroll dampening to feel like a real trackpad
+                    if (Math.abs(dy) > 2) { 
+                        mouse.scroll(dy * 0.2f); 
+                        lastY = event.getY();
+                    }
+                } else if (action == MotionEvent.ACTION_POINTER_DOWN) {
+                    lastY = event.getY(); // Reset scroll anchor
                 }
             } else if (event.getPointerCount() == 1) {
                 if (action == MotionEvent.ACTION_DOWN) {
@@ -45,9 +50,21 @@ public class TouchpadActivity extends AppCompatActivity {
                 } else if (action == MotionEvent.ACTION_MOVE && !isScrolling) {
                     float dx = event.getX() - lastX;
                     float dy = event.getY() - lastY;
-                    mouse.moveCursor(dx * 1.5f, dy * 1.5f);
-                    lastX = event.getX();
-                    lastY = event.getY();
+                    
+                    // Filter out unnoticeable micro-jitter noise
+                    if (Math.abs(dx) > 0.5f || Math.abs(dy) > 0.5f) {
+                        // Apply dynamic acceleration (mouse ballistics)
+                        float speedMultiplier = 1.2f + (Math.max(Math.abs(dx), Math.abs(dy)) * 0.05f);
+                        float finalDx = dx * speedMultiplier;
+                        float finalDy = dy * speedMultiplier;
+                        
+                        mouse.moveCursor(finalDx, finalDy);
+                        
+                        lastX = event.getX();
+                        lastY = event.getY();
+                    }
+                } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+                    mouse.holdLeft(false); // Stop any active drag
                 }
             }
             return true;
@@ -63,8 +80,15 @@ public class TouchpadActivity extends AppCompatActivity {
 
         @Override
         public boolean onDoubleTap(MotionEvent e) {
+            // Can trigger a right-click on double tap
             mouse.clickRight();
             return true;
+        }
+
+        @Override
+        public void onLongPress(MotionEvent e) {
+            // Click-and-drag capability on long press
+            mouse.holdLeft(true);
         }
     }
 }
