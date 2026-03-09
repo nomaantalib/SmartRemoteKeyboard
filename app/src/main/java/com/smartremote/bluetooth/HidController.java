@@ -74,11 +74,18 @@ public class HidController implements BluetoothProfile.ServiceListener {
     @SuppressLint("MissingPermission")
     private void registerApp() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && hidDevice != null && !isAppRegistered) {
+            // Unregister first if possible to clear stale states
+            try {
+                hidDevice.unregisterApp();
+            } catch (Exception e) {
+                Log.w("HID", "Failed to unregister app (might not be registered): " + e.getMessage());
+            }
+
             BluetoothHidDeviceAppSdpSettings sdp = new BluetoothHidDeviceAppSdpSettings(
-                    "Smart Remote",
-                    "A Smart Remote Keyboard & Mouse",
-                    "SmartApp",
-                    (byte) 0xC0, // Combo device: Keyboard (0x40) | Mouse (0x80)
+                    "SmartRemote HID",
+                    "Smart Remote Keyboard & Mouse",
+                    "Google",
+                    (byte) 0x00, // Use generic subclass for better compatibility
                     HidDescriptor.KEYBOARD_MOUSE_REPORT_MAP
             );
             
@@ -86,17 +93,17 @@ public class HidController implements BluetoothProfile.ServiceListener {
                 @Override
                 public void onAppStatusChanged(BluetoothDevice pluggedDevice, boolean registered) {
                     isAppRegistered = registered;
-                    Log.i("HID", "App Registered Status: " + registered);
+                    Log.i("HID", "App Registered Status: " + registered + (pluggedDevice != null ? " for " + pluggedDevice.getName() : ""));
                 }
 
                 @Override
                 public void onConnectionStateChanged(BluetoothDevice device, int state) {
                     if (state == BluetoothProfile.STATE_CONNECTED) {
                         connectedDevice = device;
-                        Log.i("HID", "Device Connected: " + device.getName() + " [" + device.getAddress() + "]");
+                        Log.i("HID", "CONNECTED: " + device.getName() + " (" + device.getAddress() + ")");
                     } else if (state == BluetoothProfile.STATE_DISCONNECTED) {
-                        Log.i("HID", "Device Disconnected: " + device.getName());
-                        if (connectedDevice != null && connectedDevice.equals(device)) {
+                        Log.w("HID", "DISCONNECTED: " + (device != null ? device.getName() : "Unknown device"));
+                        if (connectedDevice != null && (device == null || connectedDevice.equals(device))) {
                             connectedDevice = null;
                         }
                     }
@@ -104,7 +111,7 @@ public class HidController implements BluetoothProfile.ServiceListener {
             };
             
             boolean result = hidDevice.registerApp(sdp, null, null, Executors.newSingleThreadExecutor(), callback);
-            Log.d("HID", "Register App Result: " + result);
+            Log.d("HID", "HID App Registration Triggered: " + result);
         }
     }
 
@@ -113,19 +120,25 @@ public class HidController implements BluetoothProfile.ServiceListener {
     }
 
     public String getConnectedDeviceName() {
-        return connectedDevice != null ? connectedDevice.getName() : "None";
+        if (connectedDevice == null) return "None";
+        try {
+            return connectedDevice.getName();
+        } catch (SecurityException e) {
+            return "Connected Device";
+        }
     }
 
     @SuppressLint("MissingPermission")
     public void sendReport(int id, byte[] data) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && hidDevice != null && connectedDevice != null) {
             try {
-                hidDevice.sendReport(connectedDevice, id, data);
+                boolean success = hidDevice.sendReport(connectedDevice, id, data);
+                if (!success) {
+                    Log.w("HID", "Report failed to send - possibly disconnected");
+                }
             } catch (Exception e) {
-                Log.e("HID", "Error sending report", e);
+                Log.e("HID", "Error sending HID report", e);
             }
-        } else {
-            Log.w("HID", "Cannot send report: Device not connected or HID not initialized");
         }
     }
 }
