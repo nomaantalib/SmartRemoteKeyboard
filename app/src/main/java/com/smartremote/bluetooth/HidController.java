@@ -79,18 +79,29 @@ public class HidController implements BluetoothProfile.ServiceListener {
         @Override
         public void onAppStatusChanged(BluetoothDevice pluggedDevice, boolean registered) {
             isAppRegistered = registered;
-            Log.i("HID", "App Registered: " + registered + " Plugged: " + (pluggedDevice != null ? pluggedDevice.getName() : "null"));
+            Log.d("HID", "App Registered: " + registered + " Plugged: " + (pluggedDevice != null ? pluggedDevice.getName() : "null"));
+            
+            // Wait strictly for onAppStatusChanged = true before auto-connecting
+            if (registered && hidDevice != null && pluggedDevice != null) {
+                connect(pluggedDevice);
+            }
         }
 
         @Override
         public void onConnectionStateChanged(BluetoothDevice device, int state) {
             if (state == BluetoothProfile.STATE_CONNECTED) {
                 connectedDevice = device;
-                Log.i("HID", "CONNECTED to " + device.getName());
+                Log.d("HID", "CONNECTED to " + device.getName());
             } else if (state == BluetoothProfile.STATE_DISCONNECTED) {
                 Log.w("HID", "DISCONNECTED from " + (device != null ? device.getName() : "device"));
                 if (connectedDevice != null && (device == null || connectedDevice.equals(device))) {
                     connectedDevice = null;
+                }
+                
+                // Reconnect Automatically - Self-healing connection
+                if (device != null && hidDevice != null && isAppRegistered) {
+                    Log.d("HID", "Attempting auto-reconnect as per STATE_DISCONNECTED...");
+                    hidDevice.connect(device); // Auto reconnect
                 }
             }
         }
@@ -99,12 +110,10 @@ public class HidController implements BluetoothProfile.ServiceListener {
         public void onGetReport(BluetoothDevice device, byte type, byte id, int bufferSize) {
             Log.i("HID", "Host asked for GET_REPORT type:" + type + " id:" + id);
             if (hidDevice != null) {
-                // Windows *must* receive a SUCCESS with valid-length dummy data upon connection. 
-                // If we send UNSUPPORTED, Windows assumes the driver is broken and disconnects.
                 if (id == 1) {
-                    hidDevice.replyReport(device, type, id, new byte[8]); // Keyboard dummy
+                    hidDevice.replyReport(device, type, id, new byte[8]); 
                 } else if (id == 2) {
-                    hidDevice.replyReport(device, type, id, new byte[4]); // Mouse dummy
+                    hidDevice.replyReport(device, type, id, new byte[4]); 
                 } else {
                     hidDevice.replyReport(device, type, id, new byte[bufferSize]);
                 }
@@ -115,7 +124,6 @@ public class HidController implements BluetoothProfile.ServiceListener {
         public void onSetReport(BluetoothDevice device, byte type, byte id, byte[] data) {
             Log.i("HID", "Host asked for SET_REPORT type:" + type + " id:" + id);
             if (hidDevice != null) {
-                // Always acknowledge SET_REPORT (like NumLock LEDs) as success
                 hidDevice.reportError(device, BluetoothHidDevice.ERROR_RSP_SUCCESS);
             }
         }
@@ -125,11 +133,12 @@ public class HidController implements BluetoothProfile.ServiceListener {
     private void registerApp() {
         if (hidDevice != null && !isAppRegistered) {
             
+            // Production-ready SDP settings
             BluetoothHidDeviceAppSdpSettings sdp = new BluetoothHidDeviceAppSdpSettings(
-                    "Smart Keyboard Pro", 
-                    "Bluetooth HID Input Device",
-                    "Generic", // Do not use "Android", Windows sometimes rejects it
-                    (byte) 0x40, // KEYBOARD subclass 
+                    "Smart Remote Keyboard", 
+                    "Bluetooth HID Keyboard",
+                    "SmartRemote", 
+                    BluetoothHidDevice.SUBCLASS1_COMBO, // Better than 0x40/0x00 for cross-compatibility
                     HidDescriptor.KEYBOARD_MOUSE_REPORT_MAP
             );
             
@@ -137,9 +146,24 @@ public class HidController implements BluetoothProfile.ServiceListener {
                 hidDevice.unregisterApp();
             } catch (Exception ignored) {}
 
-            // Executors.newCachedThreadPool() is sometimes better than SingleThread for HID IO
             boolean success = hidDevice.registerApp(sdp, null, null, Executors.newCachedThreadPool(), callback);
-            Log.d("HID", "Register status (0x40 Keyboard): " + success);
+            Log.d("HID", "Register status: " + success);
+        }
+    }
+    
+    // Explicit API to force bond and connect from the UI
+    @SuppressLint("MissingPermission")
+    public void connect(BluetoothDevice device) {
+        if (hidDevice != null && isAppRegistered) {
+            if (device.getBondState() != BluetoothDevice.BOND_BONDED) {
+                Log.d("HID", "Device not bonded, initiating bond...");
+                device.createBond();
+            } else {
+                Log.d("HID", "Device bonded, connecting HID profile...");
+                hidDevice.connect(device);
+            }
+        } else {
+            Log.w("HID", "Cannot connect to device. HID Profile ready: " + (hidDevice != null) + ", App Registered: " + isAppRegistered);
         }
     }
 
@@ -153,7 +177,7 @@ public class HidController implements BluetoothProfile.ServiceListener {
 
     @SuppressLint("MissingPermission")
     public void sendReport(int id, byte[] data) {
-        if (hidDevice != null && connectedDevice != null) {
+        if (hidDevice != null && connectedDevice != null && isAppRegistered) {
             try {
                 hidDevice.sendReport(connectedDevice, id, data);
             } catch (Exception e) {
