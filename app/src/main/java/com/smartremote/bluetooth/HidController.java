@@ -48,13 +48,8 @@ public class HidController implements BluetoothProfile.ServiceListener {
             BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
             if (adapter != null && adapter.isEnabled()) {
                 adapter.getProfileProxy(context, this, BluetoothProfile.HID_DEVICE);
-                
-                // Keep-alive mechanism
-                Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(() -> {
-                    if (isConnected()) {
-                        Log.d("HID", "Stability Check: Connected to " + getConnectedDeviceName());
-                    }
-                }, 30, 30, TimeUnit.SECONDS);
+                // Removed the 30s ping — it clogs the HID connection queue 
+                // and increases latency for actual keypresses.
             }
         }
     }
@@ -106,19 +101,24 @@ public class HidController implements BluetoothProfile.ServiceListener {
             }
         }
 
+        // Pre-allocate to prevent Garbage Collection pauses during typing/handshaking
+        private final byte[] dummyKeyboard = new byte[8];
+        private final byte[] dummyMouse = new byte[4];
+
         @Override
         public void onGetReport(BluetoothDevice device, byte type, byte id, int bufferSize) {
             Log.i("HID", "Host asked for GET_REPORT type:" + type + " id:" + id);
             if (hidDevice != null) {
                 if (id == 1) {
-                    hidDevice.replyReport(device, type, id, new byte[8]); 
+                    hidDevice.replyReport(device, type, id, dummyKeyboard); 
                 } else if (id == 2) {
-                    hidDevice.replyReport(device, type, id, new byte[4]); 
+                    hidDevice.replyReport(device, type, id, dummyMouse); 
                 } else {
                     hidDevice.replyReport(device, type, id, new byte[bufferSize]);
                 }
             }
         }
+
 
         @Override
         public void onSetReport(BluetoothDevice device, byte type, byte id, byte[] data) {
@@ -146,7 +146,9 @@ public class HidController implements BluetoothProfile.ServiceListener {
                 hidDevice.unregisterApp();
             } catch (Exception ignored) {}
 
-            boolean success = hidDevice.registerApp(sdp, null, null, Executors.newCachedThreadPool(), callback);
+            // Must be SingleThreadExecutor! If Cached is used, Android might send Key Up before Key Down
+            // resulting in stuck keys or dropped inputs on the Windows side.
+            boolean success = hidDevice.registerApp(sdp, null, null, Executors.newSingleThreadExecutor(), callback);
             Log.d("HID", "Register status: " + success);
         }
     }
