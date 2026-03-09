@@ -17,6 +17,7 @@ import androidx.core.content.ContextCompat;
 import com.google.android.material.card.MaterialCardView;
 
 import com.smartremote.network.NetworkManager;
+import com.smartremote.discovery.ServerDiscovery;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.android.material.textfield.TextInputEditText;
 
@@ -25,6 +26,7 @@ public class MainActivity extends AppCompatActivity {
     private static final int PERMISSION_REQUEST_CODE = 101;
     private TextView statusText;
     private NetworkManager networkManager;
+    private ServerDiscovery serverDiscovery;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,19 +43,45 @@ public class MainActivity extends AppCompatActivity {
         SwitchMaterial switchWifi = findViewById(R.id.switchWifi);
         TextInputEditText etIpAddress = findViewById(R.id.etIpAddress);
         networkManager = NetworkManager.getInstance();
+        serverDiscovery = new ServerDiscovery();
 
         switchWifi.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isChecked) {
-                String ip = etIpAddress.getText().toString();
+                String ip = etIpAddress.getText().toString().trim();
                 if (!ip.isEmpty()) {
                     networkManager.connect(ip);
+                    statusText.setText("Wi-Fi Mode: Connecting to " + ip + "...");
+                    statusText.setTextColor(0xFF4CAF50);
                     Toast.makeText(this, "Wi-Fi Mode Enabled", Toast.LENGTH_SHORT).show();
                 } else {
-                    switchWifi.setChecked(false);
-                    Toast.makeText(this, "Please enter IP Address", Toast.LENGTH_SHORT).show();
+                    // Try auto-discovery first
+                    statusText.setText("Scanning network for server...");
+                    serverDiscovery.discover(new ServerDiscovery.DiscoveryListener() {
+                        @Override
+                        public void onServerFound(String foundIp, String name) {
+                            runOnUiThread(() -> {
+                                etIpAddress.setText(foundIp);
+                                networkManager.connect(foundIp);
+                                statusText.setText("Auto-connected to: " + name + " (" + foundIp + ")");
+                                statusText.setTextColor(0xFF4CAF50);
+                                Toast.makeText(MainActivity.this, "Server found: " + name, Toast.LENGTH_SHORT).show();
+                            });
+                        }
+
+                        @Override
+                        public void onDiscoveryFailed(String reason) {
+                            runOnUiThread(() -> {
+                                switchWifi.setChecked(false);
+                                statusText.setText("No server found. Enter IP manually.");
+                                Toast.makeText(MainActivity.this, reason, Toast.LENGTH_SHORT).show();
+                            });
+                        }
+                    });
                 }
             } else {
                 networkManager.setWifiMode(false);
+                statusText.setText("Status: Ready");
+                statusText.setTextColor(0xFFAAAAAA);
                 Toast.makeText(this, "Wi-Fi Mode Disabled", Toast.LENGTH_SHORT).show();
             }
         });
@@ -65,6 +93,7 @@ public class MainActivity extends AppCompatActivity {
         btnConnect.setOnClickListener(v -> checkPermissionsAndInitBluetooth());
         btnHelp.setOnClickListener(v -> startActivity(new Intent(this, TutorialActivity.class)));
     }
+
 
     private void checkPermissionsAndInitBluetooth() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {

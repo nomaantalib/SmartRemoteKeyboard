@@ -17,11 +17,13 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.google.android.material.button.MaterialButton;
 import com.smartremote.bluetooth.KeyboardManager;
 import com.smartremote.bluetooth.MouseManager;
+import com.smartremote.input.GestureProcessor;
 
 public class FullRemoteActivity extends AppCompatActivity {
 
     private MouseManager mouse;
     private KeyboardManager keyboard;
+    private GestureProcessor gestureProcessor;
     
     private GestureDetector gestureDetector;
     private float lastX, lastY;
@@ -35,6 +37,7 @@ public class FullRemoteActivity extends AppCompatActivity {
 
         mouse = new MouseManager();
         keyboard = new KeyboardManager();
+        gestureProcessor = new GestureProcessor();
 
         View touchSurface = findViewById(R.id.touchSurface);
         MaterialButton btnLeftClick = findViewById(R.id.btnLeftClick);
@@ -53,7 +56,13 @@ public class FullRemoteActivity extends AppCompatActivity {
                 isScrolling = true;
                 if (action == MotionEvent.ACTION_MOVE) {
                     float dy = event.getY() - lastY;
-                    mouse.moveCursor(0, dy * 0.5f); // scroll mapping
+                    float scrollVal = gestureProcessor.processScroll(dy);
+                    if (scrollVal != 0) {
+                        mouse.scroll(scrollVal);
+                        lastY = event.getY();
+                    }
+                } else if (action == MotionEvent.ACTION_POINTER_DOWN) {
+                    lastY = event.getY();
                 }
             } else if (event.getPointerCount() == 1) {
                 if (action == MotionEvent.ACTION_DOWN) {
@@ -61,15 +70,22 @@ public class FullRemoteActivity extends AppCompatActivity {
                     lastY = event.getY();
                     isScrolling = false;
                 } else if (action == MotionEvent.ACTION_MOVE && !isScrolling) {
-                    float dx = event.getX() - lastX;
-                    float dy = event.getY() - lastY;
-                    mouse.moveCursor(dx * 1.5f, dy * 1.5f);
-                    lastX = event.getX();
-                    lastY = event.getY();
+                    float rawDx = event.getX() - lastX;
+                    float rawDy = event.getY() - lastY;
+                    
+                    float[] processed = gestureProcessor.processMovement(rawDx, rawDy);
+                    if (processed[0] != 0 || processed[1] != 0) {
+                        mouse.moveCursor(processed[0], processed[1]);
+                        lastX = event.getX();
+                        lastY = event.getY();
+                    }
+                } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+                    mouse.holdLeft(false);
                 }
             }
             return true;
         });
+
 
         btnLeftClick.setOnClickListener(v -> mouse.clickLeft());
         btnRightClick.setOnClickListener(v -> mouse.clickRight());
@@ -134,6 +150,11 @@ public class FullRemoteActivity extends AppCompatActivity {
         public boolean onDoubleTap(MotionEvent e) {
             mouse.clickRight();
             return true;
+        }
+
+        @Override
+        public void onLongPress(MotionEvent e) {
+            mouse.holdLeft(true);
         }
     }
 }

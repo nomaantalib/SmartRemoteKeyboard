@@ -3,6 +3,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import com.smartremote.network.NetworkManager;
+import com.smartremote.network.PacketBuilder;
+
 public class MouseManager {
 
     private byte buttons = 0;
@@ -17,7 +20,6 @@ public class MouseManager {
     }
     
     public void scroll(float dy) {
-        // dy is negated because scrolling down on a screen usually means Wheel Down (negative in HID)
         sendMouseReport(buttons, 0, 0, (int) -dy);
     }
     
@@ -26,24 +28,19 @@ public class MouseManager {
         sendMouseReport(buttons, 0, 0, 0);
     }
     
-    // Left click: bit 0
     public void clickLeft() {
         pulseButton((byte) 1);
     }
     
-    // Right click: bit 1
     public void clickRight() {
         pulseButton((byte) 2);
     }
 
     private void pulseButton(byte buttonMask) {
-        // Press
         setButtons(buttonMask);
-        // Release asynchronously after 15ms (matches fast hardware debounce rates)
         executor.schedule(() -> setButtons((byte) 0), 15, TimeUnit.MILLISECONDS);
     }
 
-    // Left hold for dragging
     public void holdLeft(boolean down) {
         if (down) {
             buttons |= 1;
@@ -56,15 +53,28 @@ public class MouseManager {
     private void sendMouseReport(byte btn, int dx, int dy, int wheel) {
         byte[] report = new byte[4];
         report[0] = btn;
-        
-        // Clamp values strictly to standard HID relative mouse limits (-127 to 127)
         report[1] = (byte) Math.max(-127, Math.min(127, dx));
         report[2] = (byte) Math.max(-127, Math.min(127, dy));
         report[3] = (byte) Math.max(-127, Math.min(127, wheel));
         
+        // Send via Bluetooth HID
         HidController hid = HidController.get();
         if (hid != null && hid.isConnected()) {
-            hid.sendReport(2, report); // Report ID 2 is Mouse
+            hid.sendReport(2, report);
+        }
+        
+        // Also send via Wi-Fi binary protocol
+        NetworkManager net = NetworkManager.getInstance();
+        if (net.isWifiMode()) {
+            if (dx != 0 || dy != 0) {
+                net.send(PacketBuilder.mouseMove(dx, dy));
+            }
+            if (btn != 0) {
+                net.send(PacketBuilder.mouseClick(btn));
+            }
+            if (wheel != 0) {
+                net.send(PacketBuilder.scroll(wheel));
+            }
         }
     }
 }

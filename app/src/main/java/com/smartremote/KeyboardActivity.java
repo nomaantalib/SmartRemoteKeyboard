@@ -51,20 +51,31 @@ public class KeyboardActivity extends AppCompatActivity {
         keyMap.put(R.id.keyEnter, "ENTER");
         keyMap.put(R.id.keyBackspace, "BACKSPACE");
 
+        // Use onTouch for proper press/release (ACTION_DOWN = press, ACTION_UP = release)
         for (Map.Entry<Integer, String> entry : keyMap.entrySet()) {
-            findViewById(entry.getKey()).setOnClickListener(v -> {
-                if (isShiftPressed) {
-                    keyboard.sendModifierAndKey((byte) 0x02, entry.getValue()); // Left Shift (0x02)
-                    resetShift();
-                } else {
-                    keyboard.sendKey(entry.getValue());
+            findViewById(entry.getKey()).setOnTouchListener((v, event) -> {
+                int action = event.getActionMasked();
+                if (action == android.view.MotionEvent.ACTION_DOWN) {
+                    v.setPressed(true);
+                    if (isShiftPressed) {
+                        keyboard.sendModifierAndKey((byte) 0x02, entry.getValue());
+                        resetShift();
+                    } else {
+                        keyboard.sendKey(entry.getValue());
+                    }
+                } else if (action == android.view.MotionEvent.ACTION_UP || action == android.view.MotionEvent.ACTION_CANCEL) {
+                    v.setPressed(false);
+                    // Send key release (empty report)
+                    keyboard.sendKeyRelease();
                 }
+                return true;
             });
         }
 
         findViewById(R.id.keyShift).setOnClickListener(v -> toggleShift());
         findViewById(R.id.keyNumbers).setOnClickListener(v -> keyboard.sendKey("TAB"));
     }
+
 
     private void toggleShift() {
         isShiftPressed = !isShiftPressed;
