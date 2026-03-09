@@ -11,6 +11,8 @@ import android.os.Build;
 import android.util.Log;
 
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 @SuppressLint("MissingPermission")
 public class HidController implements BluetoothProfile.ServiceListener {
@@ -41,6 +43,14 @@ public class HidController implements BluetoothProfile.ServiceListener {
             BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
             if (adapter != null && adapter.isEnabled()) {
                 adapter.getProfileProxy(context, this, BluetoothProfile.HID_DEVICE);
+                
+                // Keep-alive mechanism to prevent idle timeout
+                Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(() -> {
+                    if (isConnected()) {
+                        Log.d("HID", "Ping: Keep-alive mouse report");
+                        sendReport(2, new byte[4]); // Empty Mouse report
+                    }
+                }, 60, 60, java.util.concurrent.TimeUnit.SECONDS);
             }
         }
     }

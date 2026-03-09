@@ -10,6 +10,11 @@
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE"/>
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation"/>
     
+    <!-- Stability & Background Permissions -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    
     <uses-feature android:name="android.hardware.bluetooth" android:required="true"/>
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="true"/>
 
@@ -18,6 +23,13 @@
         android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar"
         android:supportsRtl="true"
         android:allowBackup="true">
+
+        <!-- Background Service to keep connection active -->
+        <service 
+            android:name=".bluetooth.HidService" 
+            android:enabled="true" 
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice"/>
 
         <activity android:name=".TouchpadActivity" android:exported="true"/>
         <activity android:name=".KeyboardActivity" android:exported="true"/>

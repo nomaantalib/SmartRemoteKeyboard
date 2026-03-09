@@ -71,15 +71,20 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         
-        // Initialize the background HID Service Profile
-        com.smartremote.bluetooth.HidController.getInstance(this).initialize();
+        // Initialize and Start the background HidService to keep connection active
+        Intent serviceIntent = new Intent(this, com.smartremote.bluetooth.HidService.class);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(serviceIntent);
+        } else {
+            startService(serviceIntent);
+        }
 
         statusText.setText("Status: HID Server Started\nCRITICAL: If connection fails, 'Unpair' your phone on Windows and try again.");
-        Toast.makeText(this, "IMPORTANT: Pair from your PC, not the phone!", Toast.LENGTH_LONG).show();
+        Toast.makeText(this, "IMPORTANT: Connection is now persistent via background service.", Toast.LENGTH_LONG).show();
         
         // Request Android to make this phone discoverable
         Intent discoverableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
-        discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300);
+        discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 600); // 10 minutes
         startActivity(discoverableIntent);
     }
 
