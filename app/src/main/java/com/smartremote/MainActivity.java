@@ -46,7 +46,7 @@ public class MainActivity extends AppCompatActivity {
             if (isChecked) {
                 String ip = etIpAddress.getText().toString();
                 if (!ip.isEmpty()) {
-                    networkManager.connect(ip, 9999);
+                    networkManager.connect(ip);
                     Toast.makeText(this, "Wi-Fi Mode Enabled", Toast.LENGTH_SHORT).show();
                 } else {
                     switchWifi.setChecked(false);

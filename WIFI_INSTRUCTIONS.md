@@ -25,5 +25,5 @@ If your phone or PC does not support Bluetooth HID, you can use the Wi-Fi fallba
 
 ### Troubleshooting:
 - Ensure both the phone and PC are on the **same Wi-Fi network**.
-- Check your PC's **Firewall** settings – allow Python to use UDP port `9999`.
+- Check your PC's **Firewall** settings – allow Python to use TCP port `5050`.
 - If your mouse moves to a corner, the Python script will stop as a fail-safe.

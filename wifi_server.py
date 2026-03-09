@@ -1,78 +1,100 @@
 import socket
-import pyautogui
+import struct
+import ctypes
 import time
 
-# To turn off the fail-safe, set to False (dangerous)
-pyautogui.FAILSAFE = True
+# Options
+PORT = 5050
+HOST = "0.0.0.0"
 
-# Standard HID key mapping (simplified)
-HID_KEY_MAP = {
-    4: 'a', 5: 'b', 6: 'c', 7: 'd', 8: 'e', 9: 'f', 10: 'g', 11: 'h',
-    12: 'i', 13: 'j', 14: 'k', 15: 'l', 16: 'm', 17: 'n', 18: 'o', 19: 'p',
-    20: 'q', 21: 'r', 22: 's', 23: 't', 24: 'u', 25: 'v', 26: 'w', 27: 'x',
-    28: 'y', 29: 'z', 30: '1', 31: '2', 32: '3', 33: '4', 34: '5', 35: '6',
-    36: '7', 37: '8', 38: '9', 39: '0', 40: 'enter', 41: 'esc', 42: 'backspace',
-    43: 'tab', 44: 'space', 45: '-', 46: '=', 47: '[', 48: ']', 49: '\\',
-    51: ';', 52: "'", 53: '`', 54: ',', 55: '.', 56: '/', 57: 'capslock'
+# CTypes for high performance Windows API
+# 0x01 = MOVE, 0x02 = LEFTDOWN, 0x04 = LEFTUP, 0x08 = RIGHTDOWN, 0x10 = RIGHTUP
+# 0x0800 = WHEEL
+MOUSEEVENTF_MOVE = 0x0001
+MOUSEEVENTF_LEFTDOWN = 0x0002
+MOUSEEVENTF_LEFTUP = 0x0004
+MOUSEEVENTF_RIGHTDOWN = 0x0008
+MOUSEEVENTF_RIGHTUP = 0x0010
+MOUSEEVENTF_WHEEL = 0x0800
+
+def move_mouse(dx, dy):
+    # ctypes.windll.user32.mouse_event(flags, dx, dy, data, extraInfo)
+    ctypes.windll.user32.mouse_event(MOUSEEVENTF_MOVE, int(dx), int(dy), 0, 0)
+
+def scroll_mouse(dy):
+    ctypes.windll.user32.mouse_event(MOUSEEVENTF_WHEEL, 0, 0, int(dy) * 120, 0)
+
+def press_key(vk_code):
+    ctypes.windll.user32.keybd_event(vk_code, 0, 0, 0)
+
+def release_key(vk_code):
+    ctypes.windll.user32.keybd_event(vk_code, 0, 2, 0)
+
+# Map HID Usage (USB) to Windows Virtual Key (VK)
+HID_TO_VK = {
+    4: 0x41, 5: 0x42, 6: 0x43, 7: 0x44, 8: 0x45, 9: 0x46, 10: 0x47, 11: 0x48,
+    12: 0x49, 13: 0x4A, 14: 0x4B, 15: 0x4C, 16: 0x4D, 17: 0x4E, 18: 0x4F, 19: 0x50,
+    20: 0x51, 21: 0x52, 22: 0x53, 23: 0x54, 24: 0x55, 25: 0x56, 26: 0x57, 27: 0x58,
+    28: 0x59, 29: 0x5A, 30: 0x31, 31: 0x32, 32: 0x33, 33: 0x34, 34: 0x35, 35: 0x36,
+    36: 0x37, 37: 0x38, 38: 0x39, 39: 0x30, 40: 0x0D, 41: 0x1B, 42: 0x08, 43: 0x09,
+    44: 0x20, 45: 0xBD, 46: 0xBB, 47: 0xDB, 48: 0xDD, 49: 0xDC, 51: 0xBA, 52: 0xDE,
+    53: 0xC0, 54: 0xBC, 55: 0xBE, 56: 0xBF, 57: 0x14
 }
 
-def handle_report(id, data):
-    if id == 1: # Keyboard
-        modifier = data[0]
-        keycode = data[2]
-        if keycode == 0: return # Key Release
-        
-        key = HID_KEY_MAP.get(keycode)
-        if key:
-            # Handle shift
-            if modifier & 0x02 or modifier & 0x20:
-                pyautogui.hotkey('shift', key)
-            else:
-                pyautogui.press(key)
-                
-    elif id == 2: # Mouse
-        btns = data[0]
-        dx = data[1]
-        dy = data[2]
-        wheel = data[3]
-        
-        # Relative move
-        if dx != 0 or dy != 0:
-            pyautogui.moveRel(dx, dy)
-        
-        # Scroll
-        if wheel != 0:
-            pyautogui.scroll(wheel * 10)
-            
-        # Clicks
-        if btns & 1: pyautogui.click(button='left')
-        elif btns & 2: pyautogui.click(button='right')
-
 def start_server():
-    UDP_IP = "0.0.0.0"
-    UDP_PORT = 9999
-    
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind((UDP_IP, UDP_PORT))
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind((HOST, PORT))
+    server.listen(1)
     
     hostname = socket.gethostname()
     local_ip = socket.gethostbyname(hostname)
-    
-    print(f"--- Smart Remote Wi-Fi Server ---")
-    print(f"Server listening on {local_ip}:{UDP_PORT}")
-    print(f"Enter this IP in your Android App.")
-    print(f"Move your mouse to any corner of the screen to stop (Fail-safe).")
-    
+
+    print(f"--- Smart Remote High-Perf Server (TCP) ---")
+    print(f"Listening on {local_ip}:{PORT}")
+    print(f"Waiting for connection...")
+
     while True:
-        data, addr = sock.recvfrom(1024)
+        conn, addr = server.accept()
+        print(f"Connected by {addr}")
         try:
-            msg = data.decode('utf-8')
-            parts = msg.split(':')
-            report_id = int(parts[0])
-            report_data = [int(x) for x in parts[1].split(',')]
-            handle_report(report_id, report_data)
+            while True:
+                data = conn.recv(4)
+                if not data:
+                    break
+                
+                # event, key, val1, val2
+                event, key, val1, val2 = struct.unpack("BBBB", data)
+                
+                # Conversion for signed bytes (B to b)
+                # If value is > 127 it's negative
+                def to_signed(b):
+                    return b if b < 128 else b - 256
+
+                if event == 1: # Key Press
+                    vk = HID_TO_VK.get(key)
+                    if vk: press_key(vk)
+                elif event == 2: # Key Release
+                    vk = HID_TO_VK.get(key)
+                    if vk: release_key(vk)
+                elif event == 3: # Mouse Move
+                    move_mouse(to_signed(key), to_signed(val1))
+                elif event == 4: # Mouse Click
+                    # val1 is button mask
+                    if val1 == 1: # Left
+                        ctypes.windll.user32.mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
+                        time.sleep(0.01)
+                        ctypes.windll.user32.mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
+                    elif val1 == 2: # Right
+                        ctypes.windll.user32.mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0)
+                        time.sleep(0.01)
+                        ctypes.windll.user32.mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0)
+                elif event == 5: # Scroll
+                    scroll_mouse(to_signed(key))
+                    
         except Exception as e:
-            pass
+            print(f"Connection lost: {e}")
+        finally:
+            conn.close()
 
 if __name__ == "__main__":
     start_server()
