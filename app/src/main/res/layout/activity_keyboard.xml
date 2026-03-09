@@ -86,7 +86,7 @@
         android:orientation="horizontal"
         android:weightSum="10">
         <com.google.android.material.button.MaterialButton style="@style/KeyboardKey.Special" 
-            android:id="@+id/keyNumbers" android:text="?123" android:layout_weight="1.5"/>
+            android:id="@+id/keyNumbers" android:text="\?123" android:layout_weight="1.5"/>
         <com.google.android.material.button.MaterialButton style="@style/KeyboardKey" 
             android:id="@+id/keySpace" android:text="Space" android:layout_weight="6"/>
         <com.google.android.material.button.MaterialButton style="@style/KeyboardKey.Action" 
