@@ -16,10 +16,15 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import com.google.android.material.card.MaterialCardView;
 
+import com.smartremote.network.NetworkManager;
+import com.google.android.material.switchmaterial.SwitchMaterial;
+import com.google.android.material.textfield.TextInputEditText;
+
 public class MainActivity extends AppCompatActivity {
 
     private static final int PERMISSION_REQUEST_CODE = 101;
     private TextView statusText;
+    private NetworkManager networkManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,6 +37,26 @@ public class MainActivity extends AppCompatActivity {
         MaterialCardView cardFullRemote = findViewById(R.id.cardFullRemote);
         Button btnConnect = findViewById(R.id.btnConnect);
         Button btnHelp = findViewById(R.id.btnHelp);
+
+        SwitchMaterial switchWifi = findViewById(R.id.switchWifi);
+        TextInputEditText etIpAddress = findViewById(R.id.etIpAddress);
+        networkManager = NetworkManager.getInstance();
+
+        switchWifi.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChecked) {
+                String ip = etIpAddress.getText().toString();
+                if (!ip.isEmpty()) {
+                    networkManager.connect(ip, 9999);
+                    Toast.makeText(this, "Wi-Fi Mode Enabled", Toast.LENGTH_SHORT).show();
+                } else {
+                    switchWifi.setChecked(false);
+                    Toast.makeText(this, "Please enter IP Address", Toast.LENGTH_SHORT).show();
+                }
+            } else {
+                networkManager.setWifiMode(false);
+                Toast.makeText(this, "Wi-Fi Mode Disabled", Toast.LENGTH_SHORT).show();
+            }
+        });
 
         cardKeyboard.setOnClickListener(v -> startActivity(new Intent(this, KeyboardActivity.class)));
         cardTouchpad.setOnClickListener(v -> startActivity(new Intent(this, TouchpadActivity.class)));

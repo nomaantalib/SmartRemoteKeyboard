@@ -179,6 +179,9 @@ public class HidController implements BluetoothProfile.ServiceListener {
 
     @SuppressLint("MissingPermission")
     public void sendReport(int id, byte[] data) {
+        // Fallback: Also send via Wi-Fi if enabled
+        com.smartremote.network.NetworkManager.getInstance().sendHidReport(id, data);
+
         if (hidDevice != null && connectedDevice != null && isAppRegistered) {
             try {
                 hidDevice.sendReport(connectedDevice, id, data);
