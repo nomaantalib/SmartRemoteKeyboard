@@ -72,7 +72,6 @@ public class HidController implements BluetoothProfile.ServiceListener {
         if (profile == BluetoothProfile.HID_DEVICE) {
             hidDevice = null;
             isAppRegistered = false;
-            stopReconnectLoop();
         }
     }
 
@@ -81,15 +80,6 @@ public class HidController implements BluetoothProfile.ServiceListener {
         public void onAppStatusChanged(BluetoothDevice pluggedDevice, boolean registered) {
             isAppRegistered = registered;
             Log.i("HID", "App Registered: " + registered + " Plugged: " + (pluggedDevice != null ? pluggedDevice.getName() : "null"));
-            
-            if (registered && hidDevice != null) {
-                if (pluggedDevice != null) {
-                    try { hidDevice.connect(pluggedDevice); } catch (Exception e) {}
-                }
-                startReconnectLoop();
-            } else {
-                stopReconnectLoop();
-            }
         }
 
         @Override
@@ -97,68 +87,32 @@ public class HidController implements BluetoothProfile.ServiceListener {
             if (state == BluetoothProfile.STATE_CONNECTED) {
                 connectedDevice = device;
                 Log.i("HID", "CONNECTED to " + device.getName());
-                stopReconnectLoop(); // Successfully connected, stop retrying
             } else if (state == BluetoothProfile.STATE_DISCONNECTED) {
                 Log.w("HID", "DISCONNECTED from " + (device != null ? device.getName() : "device"));
                 if (connectedDevice != null && (device == null || connectedDevice.equals(device))) {
                     connectedDevice = null;
-                    startReconnectLoop(); // Dropped, start retrying
                 }
             }
         }
 
         @Override
         public void onGetReport(BluetoothDevice device, byte type, byte id, int bufferSize) {
-            Log.i("HID", "Host asked for Report ID: " + id);
+            Log.i("HID", "Host asked for GET_REPORT type:" + type + " id:" + id);
             if (hidDevice != null) {
-                if (id == 1) hidDevice.replyReport(device, type, id, new byte[8]);
-                else if (id == 2) hidDevice.replyReport(device, type, id, new byte[4]);
-                else hidDevice.replyReport(device, type, id, new byte[bufferSize]);
+                // Reply with UNSUPPORTED instead of dummy bytes, otherwise Windows marks the device as malfunctioning
+                hidDevice.reportError(device, BluetoothHidDevice.ERROR_RSP_UNSUPPORTED_REQ);
             }
         }
 
         @Override
         public void onSetReport(BluetoothDevice device, byte type, byte id, byte[] data) {
-            Log.i("HID", "Host set Report ID: " + id);
+            Log.i("HID", "Host asked for SET_REPORT type:" + type + " id:" + id);
             if (hidDevice != null) {
+                // Always acknowledge SET_REPORT (like NumLock LEDs) as success
                 hidDevice.reportError(device, BluetoothHidDevice.ERROR_RSP_SUCCESS);
             }
         }
     };
-
-    private void startReconnectLoop() {
-        if (reconnectRunnable != null) return;
-        
-        reconnectRunnable = new Runnable() {
-            @Override
-            public void run() {
-                if (!isConnected() && hidDevice != null && isAppRegistered) {
-                    try {
-                        BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
-                        if (adapter != null) {
-                            for (BluetoothDevice device : adapter.getBondedDevices()) {
-                                Log.d("HID", "Attempting auto-reconnect to: " + device.getName());
-                                hidDevice.connect(device); // Connect to known hosts
-                            }
-                        }
-                    } catch (Exception e) {
-                        Log.e("HID", "Reconnect error", e);
-                    }
-                    reconnectHandler.postDelayed(this, 5000); // Retry every 5 seconds
-                } else {
-                    reconnectRunnable = null; // Stop if connected or unregistered
-                }
-            }
-        };
-        reconnectHandler.post(reconnectRunnable);
-    }
-
-    private void stopReconnectLoop() {
-        if (reconnectRunnable != null) {
-            reconnectHandler.removeCallbacks(reconnectRunnable);
-            reconnectRunnable = null;
-        }
-    }
 
     @SuppressLint("MissingPermission")
     private void registerApp() {
