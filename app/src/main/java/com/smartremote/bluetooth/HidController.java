@@ -68,7 +68,7 @@ public class HidController implements BluetoothProfile.ServiceListener {
                     "Smart Remote",
                     "A Smart Remote Keyboard & Mouse",
                     "SmartApp",
-                    (byte) 0xC0, // Combo device
+                    (byte) 0xC0, // Combo device: Keyboard (0x40) | Mouse (0x80)
                     HidDescriptor.KEYBOARD_MOUSE_REPORT_MAP
             );
             
@@ -76,22 +76,16 @@ public class HidController implements BluetoothProfile.ServiceListener {
                 @Override
                 public void onAppStatusChanged(BluetoothDevice pluggedDevice, boolean registered) {
                     isAppRegistered = registered;
-                    Log.i("HID", "App Registered: " + registered);
-                    if (registered) {
-                        // Attempt to connect to any already bonded device that supports HID
-                        BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
-                        for (BluetoothDevice device : adapter.getBondedDevices()) {
-                            hidDevice.connect(device);
-                        }
-                    }
+                    Log.i("HID", "App Registered Status: " + registered);
                 }
 
                 @Override
                 public void onConnectionStateChanged(BluetoothDevice device, int state) {
                     if (state == BluetoothProfile.STATE_CONNECTED) {
                         connectedDevice = device;
-                        Log.i("HID", "Device Connected: " + device.getName());
+                        Log.i("HID", "Device Connected: " + device.getName() + " [" + device.getAddress() + "]");
                     } else if (state == BluetoothProfile.STATE_DISCONNECTED) {
+                        Log.i("HID", "Device Disconnected: " + device.getName());
                         if (connectedDevice != null && connectedDevice.equals(device)) {
                             connectedDevice = null;
                         }
@@ -99,14 +93,29 @@ public class HidController implements BluetoothProfile.ServiceListener {
                 }
             };
             
-            hidDevice.registerApp(sdp, null, null, Executors.newSingleThreadExecutor(), callback);
+            boolean result = hidDevice.registerApp(sdp, null, null, Executors.newSingleThreadExecutor(), callback);
+            Log.d("HID", "Register App Result: " + result);
         }
+    }
+
+    public boolean isConnected() {
+        return connectedDevice != null;
+    }
+
+    public String getConnectedDeviceName() {
+        return connectedDevice != null ? connectedDevice.getName() : "None";
     }
 
     @SuppressLint("MissingPermission")
     public void sendReport(int id, byte[] data) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && hidDevice != null && connectedDevice != null) {
-            hidDevice.sendReport(connectedDevice, id, data);
+            try {
+                hidDevice.sendReport(connectedDevice, id, data);
+            } catch (Exception e) {
+                Log.e("HID", "Error sending report", e);
+            }
+        } else {
+            Log.w("HID", "Cannot send report: Device not connected or HID not initialized");
         }
     }
 }

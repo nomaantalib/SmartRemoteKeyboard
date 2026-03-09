@@ -5,71 +5,92 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@color/background"
-    android:gravity="center"
-    android:padding="16dp">
+    android:padding="4dp">
 
     <TextView
+        android:id="@+id/connectionStatus"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Keyboard PRO"
-        android:textColor="@color/textColor"
-        android:textSize="24sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="32dp"/>
-
-    <GridLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:columnCount="3"
-        android:rowCount="2"
-        android:alignmentMode="alignBounds"
-        android:rowOrderPreserved="false">
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/keyA"
-            android:layout_width="80dp"
-            android:layout_height="80dp"
-            android:layout_margin="8dp"
-            app:cornerRadius="12dp"
-            android:text="A"
-            android:textSize="24sp"/>
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/keyB"
-            android:layout_width="80dp"
-            android:layout_height="80dp"
-            android:layout_margin="8dp"
-            app:cornerRadius="12dp"
-            android:text="B"
-            android:textSize="24sp"/>
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/keyC"
-            android:layout_width="80dp"
-            android:layout_height="80dp"
-            android:layout_margin="8dp"
-            app:cornerRadius="12dp"
-            android:text="C"
-            android:textSize="24sp"/>
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/keySpace"
-            android:layout_width="wrap_content"
-            android:layout_height="80dp"
-            android:layout_margin="8dp"
-            android:layout_columnSpan="3"
-            android:layout_gravity="fill_horizontal"
-            app:cornerRadius="12dp"
-            android:text="Space"
-            android:textSize="18sp"/>
-            
-    </GridLayout>
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="(More keys can be mapped seamlessly...)"
+        android:text="Status: Not connected"
         android:textColor="@color/textSecondary"
-        android:layout_marginTop="32dp"/>
+        android:textSize="12sp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="16dp"/>
+
+    <Space
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"/>
+
+    <!-- Row 1: QWERTYUIOP -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:weightSum="10">
+        <com.google.android.material.button.MaterialButton style="@style/KeyboardKey" android:id="@+id/keyQ" android:text="Q"/>
+        <com.google.android.material.button.MaterialButton style="@style/KeyboardKey" android:id="@+id/keyW" android:text="W"/>
+        <com.google.android.material.button.MaterialButton style="@style/KeyboardKey" android:id="@+id/keyE" android:text="E"/>
+        <com.google.android.material.button.MaterialButton style="@style/KeyboardKey" android:id="@+id/keyR" android:text="R"/>
+        <com.google.android.material.button.MaterialButton style="@style/KeyboardKey" android:id="@+id/keyT" android:text="T"/>
+        <com.google.android.material.button.MaterialButton style="@style/KeyboardKey" android:id="@+id/keyY" android:text="Y"/>
+        <com.google.android.material.button.MaterialButton style="@style/KeyboardKey" android:id="@+id/keyU" android:text="U"/>
+        <com.google.android.material.button.MaterialButton style="@style/KeyboardKey" android:id="@+id/keyI" android:text="I"/>
+        <com.google.android.material.button.MaterialButton style="@style/KeyboardKey" android:id="@+id/keyO" android:text="O"/>
+        <com.google.android.material.button.MaterialButton style="@style/KeyboardKey" android:id="@+id/keyP" android:text="P"/>
+    </LinearLayout>
+
+    <!-- Row 2: ASDFGHJKL -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:weightSum="9">
+        <com.google.android.material.button.MaterialButton style="@style/KeyboardKey" android:id="@+id/keyA" android:text="A"/>
+        <com.google.android.material.button.MaterialButton style="@style/KeyboardKey" android:id="@+id/keyS" android:text="S"/>
+        <com.google.android.material.button.MaterialButton style="@style/KeyboardKey" android:id="@+id/keyD" android:text="D"/>
+        <com.google.android.material.button.MaterialButton style="@style/KeyboardKey" android:id="@+id/keyF" android:text="F"/>
+        <com.google.android.material.button.MaterialButton style="@style/KeyboardKey" android:id="@+id/keyG" android:text="G"/>
+        <com.google.android.material.button.MaterialButton style="@style/KeyboardKey" android:id="@+id/keyH" android:text="H"/>
+        <com.google.android.material.button.MaterialButton style="@style/KeyboardKey" android:id="@+id/keyJ" android:text="J"/>
+        <com.google.android.material.button.MaterialButton style="@style/KeyboardKey" android:id="@+id/keyK" android:text="K"/>
+        <com.google.android.material.button.MaterialButton style="@style/KeyboardKey" android:id="@+id/keyL" android:text="L"/>
+    </LinearLayout>
+
+    <!-- Row 3: Shift ZXCVBNM Backspace -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:weightSum="10">
+        <com.google.android.material.button.MaterialButton style="@style/KeyboardKey.Special" 
+            android:id="@+id/keyShift" android:text="⇧" android:layout_weight="1.5"/>
+        <com.google.android.material.button.MaterialButton style="@style/KeyboardKey" android:id="@+id/keyZ" android:text="Z"/>
+        <com.google.android.material.button.MaterialButton style="@style/KeyboardKey" android:id="@+id/keyX" android:text="X"/>
+        <com.google.android.material.button.MaterialButton style="@style/KeyboardKey" android:id="@+id/keyC" android:text="C"/>
+        <com.google.android.material.button.MaterialButton style="@style/KeyboardKey" android:id="@+id/keyV" android:text="V"/>
+        <com.google.android.material.button.MaterialButton style="@style/KeyboardKey" android:id="@+id/keyB" android:text="B"/>
+        <com.google.android.material.button.MaterialButton style="@style/KeyboardKey" android:id="@+id/keyN" android:text="N"/>
+        <com.google.android.material.button.MaterialButton style="@style/KeyboardKey" android:id="@+id/keyM" android:text="M"/>
+        <com.google.android.material.button.MaterialButton style="@style/KeyboardKey.Special" 
+            android:id="@+id/keyBackspace" android:text="⌫" android:layout_weight="1.5"/>
+    </LinearLayout>
+
+    <!-- Row 4: Numbers Space Enter -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:weightSum="10">
+        <com.google.android.material.button.MaterialButton style="@style/KeyboardKey.Special" 
+            android:id="@+id/keyNumbers" android:text="?123" android:layout_weight="1.5"/>
+        <com.google.android.material.button.MaterialButton style="@style/KeyboardKey" 
+            android:id="@+id/keySpace" android:text="Space" android:layout_weight="6"/>
+        <com.google.android.material.button.MaterialButton style="@style/KeyboardKey.Action" 
+            android:id="@+id/keyEnter" android:text="Enter" android:layout_weight="2.5"/>
+    </LinearLayout>
 
 </LinearLayout>
