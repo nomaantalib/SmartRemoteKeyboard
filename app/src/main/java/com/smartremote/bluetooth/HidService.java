@@ -30,7 +30,7 @@ public class HidService extends Service {
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("Smart Remote Active")
                 .setContentText("Keeping Bluetooth HID Keyboard & Mouse Connected...")
-                .setSmallIcon(R.mipmap.ic_launcher)
+                .setSmallIcon(R.drawable.ic_keyboard)
                 .setContentIntent(pendingIntent)
                 .build();
 
