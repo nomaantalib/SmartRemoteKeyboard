@@ -163,20 +163,24 @@ public class HidController implements BluetoothProfile.ServiceListener {
     @SuppressLint("MissingPermission")
     private void registerApp() {
         if (hidDevice != null && !isAppRegistered) {
+            
+            // Subclass 0x40 specifically means "Keyboard" (0x80 is Mouse, 0xC0 is Combo).
+            // Many Windows hosts reject combos if the SDP name doesn't match the descriptor.
             BluetoothHidDeviceAppSdpSettings sdp = new BluetoothHidDeviceAppSdpSettings(
-                    "Smart Remote",
-                    "BT HID Keyboard/Mouse",
-                    "SmartRemote",
-                    (byte) 0xC0, // Combo device Keyboard & Mouse subclass (try this instead of 0x00)
+                    "Smart Remote System", // Less generic, prevents Windows caching conflicts
+                    "Bluetooth HID Input Device",
+                    "Android HID",
+                    (byte) 0x40, // KEYBOARD subclass to satisfy strict host rules
                     HidDescriptor.KEYBOARD_MOUSE_REPORT_MAP
             );
             
             try {
                 hidDevice.unregisterApp();
+                Log.d("HID", "Unregistering old app state before new registration.");
             } catch (Exception ignored) {}
 
             boolean success = hidDevice.registerApp(sdp, null, null, Executors.newSingleThreadExecutor(), callback);
-            Log.d("HID", "Register status: " + success);
+            Log.d("HID", "Register status (0x40 Keyboard): " + success);
         }
     }
 
@@ -191,7 +195,11 @@ public class HidController implements BluetoothProfile.ServiceListener {
     @SuppressLint("MissingPermission")
     public void sendReport(int id, byte[] data) {
         if (hidDevice != null && connectedDevice != null) {
-            hidDevice.sendReport(connectedDevice, id, data);
+            try {
+                hidDevice.sendReport(connectedDevice, id, data);
+            } catch (Exception e) {
+                Log.e("HID", "Error sending report ID: " + id, e);
+            }
         }
     }
 }
