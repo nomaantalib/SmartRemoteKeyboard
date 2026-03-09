@@ -8,6 +8,8 @@ import android.bluetooth.BluetoothHidDeviceAppSdpSettings;
 import android.bluetooth.BluetoothProfile;
 import android.content.Context;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 import java.util.concurrent.Executors;
@@ -22,6 +24,8 @@ public class HidController implements BluetoothProfile.ServiceListener {
     private BluetoothDevice connectedDevice;
     private boolean isAppRegistered = false;
     private Context context;
+    private Handler reconnectHandler;
+    private Runnable reconnectRunnable;
 
     public static HidController getInstance(Context context) {
         if (instance == null) {
@@ -36,6 +40,7 @@ public class HidController implements BluetoothProfile.ServiceListener {
 
     private HidController(Context context) {
         this.context = context;
+        this.reconnectHandler = new Handler(Looper.getMainLooper());
     }
 
     public void initialize() {
@@ -67,6 +72,7 @@ public class HidController implements BluetoothProfile.ServiceListener {
         if (profile == BluetoothProfile.HID_DEVICE) {
             hidDevice = null;
             isAppRegistered = false;
+            stopReconnectLoop();
         }
     }
 
@@ -74,21 +80,15 @@ public class HidController implements BluetoothProfile.ServiceListener {
         @Override
         public void onAppStatusChanged(BluetoothDevice pluggedDevice, boolean registered) {
             isAppRegistered = registered;
-            Log.i("HID", "App Registered: " + registered);
+            Log.i("HID", "App Registered: " + registered + " Plugged: " + (pluggedDevice != null ? pluggedDevice.getName() : "null"));
+            
             if (registered && hidDevice != null) {
-                // Auto-reconnect without needing to unpair
                 if (pluggedDevice != null) {
                     try { hidDevice.connect(pluggedDevice); } catch (Exception e) {}
-                } else {
-                    try {
-                        BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
-                        if (adapter != null) {
-                            for (BluetoothDevice device : adapter.getBondedDevices()) {
-                                hidDevice.connect(device); // Connect to known hosts
-                            }
-                        }
-                    } catch (Exception e) {}
                 }
+                startReconnectLoop();
+            } else {
+                stopReconnectLoop();
             }
         }
 
@@ -97,16 +97,16 @@ public class HidController implements BluetoothProfile.ServiceListener {
             if (state == BluetoothProfile.STATE_CONNECTED) {
                 connectedDevice = device;
                 Log.i("HID", "CONNECTED to " + device.getName());
+                stopReconnectLoop(); // Successfully connected, stop retrying
             } else if (state == BluetoothProfile.STATE_DISCONNECTED) {
                 Log.w("HID", "DISCONNECTED from " + (device != null ? device.getName() : "device"));
                 if (connectedDevice != null && (device == null || connectedDevice.equals(device))) {
                     connectedDevice = null;
+                    startReconnectLoop(); // Dropped, start retrying
                 }
             }
         }
 
-        // CRITICAL: Windows sends GET_REPORT/SET_REPORT immediately upon connection. 
-        // If we don't reply, Windows will instantly drop the connection.
         @Override
         public void onGetReport(BluetoothDevice device, byte type, byte id, int bufferSize) {
             Log.i("HID", "Host asked for Report ID: " + id);
@@ -121,11 +121,44 @@ public class HidController implements BluetoothProfile.ServiceListener {
         public void onSetReport(BluetoothDevice device, byte type, byte id, byte[] data) {
             Log.i("HID", "Host set Report ID: " + id);
             if (hidDevice != null) {
-                // Acknowledge the host's report (e.g., NumLock/CapsLock LED states)
                 hidDevice.reportError(device, BluetoothHidDevice.ERROR_RSP_SUCCESS);
             }
         }
     };
+
+    private void startReconnectLoop() {
+        if (reconnectRunnable != null) return;
+        
+        reconnectRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (!isConnected() && hidDevice != null && isAppRegistered) {
+                    try {
+                        BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+                        if (adapter != null) {
+                            for (BluetoothDevice device : adapter.getBondedDevices()) {
+                                Log.d("HID", "Attempting auto-reconnect to: " + device.getName());
+                                hidDevice.connect(device); // Connect to known hosts
+                            }
+                        }
+                    } catch (Exception e) {
+                        Log.e("HID", "Reconnect error", e);
+                    }
+                    reconnectHandler.postDelayed(this, 5000); // Retry every 5 seconds
+                } else {
+                    reconnectRunnable = null; // Stop if connected or unregistered
+                }
+            }
+        };
+        reconnectHandler.post(reconnectRunnable);
+    }
+
+    private void stopReconnectLoop() {
+        if (reconnectRunnable != null) {
+            reconnectHandler.removeCallbacks(reconnectRunnable);
+            reconnectRunnable = null;
+        }
+    }
 
     @SuppressLint("MissingPermission")
     private void registerApp() {
@@ -134,7 +167,7 @@ public class HidController implements BluetoothProfile.ServiceListener {
                     "Smart Remote",
                     "BT HID Keyboard/Mouse",
                     "SmartRemote",
-                    (byte) 0x00, // Generic
+                    (byte) 0xC0, // Combo device Keyboard & Mouse subclass (try this instead of 0x00)
                     HidDescriptor.KEYBOARD_MOUSE_REPORT_MAP
             );
             
